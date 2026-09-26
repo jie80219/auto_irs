@@ -36,3 +36,7 @@ PNR_TEXT_PATTERN = r"訂位代號\s*[:：]?\s*(\d{8})"
 
 # ---- 錯誤訊息 ----
 ERROR_MESSAGE = ".feedbackPanelERROR, #divErrMSG"
+
+# ---- 訂位明細截圖：從標題往上找到同時包含這些文字的最小區塊 ----
+TICKET_SECTION_TITLE = "訂位明細"
+TICKET_SECTION_MUST_CONTAIN = ("訂位代號", "總票價")

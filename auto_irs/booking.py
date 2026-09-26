@@ -13,9 +13,11 @@ from playwright.sync_api import Page, TimeoutError as PlaywrightTimeout, sync_pl
 from . import page_selectors as S
 from .config import TICKET_TYPES, Config
 from .notify import notify
+from .ticket import TicketInfo, parse_ticket
 from .timeslots import TrainOption, pick_earliest, pick_slot
 
 SCREENSHOT_DIR = Path("screenshots")
+TICKET_DIR = Path("tickets")
 LOG_FILE = Path("bookings.log")
 
 
@@ -207,6 +209,32 @@ def confirm_booking(page: Page, cfg: Config) -> str | None:
     return None
 
 
+# ---------- 第四頁 ----------
+
+def capture_ticket(page: Page, pnr: str) -> tuple[TicketInfo, Path]:
+    """截下「訂位明細」區塊存成 tickets/<日期>-<訂位代號>.png，並解析明細文字。"""
+    section = page.evaluate_handle(
+        """([title, needles]) => {
+            const heading = [...document.querySelectorAll('h1,h2,h3,h4,div,span,p')]
+                .find(el => el.childElementCount === 0 && el.textContent.trim() === title);
+            let node = heading;
+            while (node && !needles.every(n => node.innerText.includes(n))) node = node.parentElement;
+            return node && node !== document.body ? node : null;
+        }""",
+        [S.TICKET_SECTION_TITLE, list(S.TICKET_SECTION_MUST_CONTAIN)],
+    ).as_element()
+
+    TICKET_DIR.mkdir(exist_ok=True)
+    path = TICKET_DIR / f"{datetime.now():%Y%m%d}-{pnr}.png"
+    if section:
+        section.screenshot(path=str(path))
+        text = section.inner_text()
+    else:
+        page.screenshot(path=str(path), full_page=True)
+        text = page.inner_text("body")
+    return parse_ticket(pnr, text), path
+
+
 # ---------- 整體流程 ----------
 
 def attempt(page: Page, cfg: Config, dry_run: bool = False) -> Outcome:
@@ -227,12 +255,11 @@ def attempt(page: Page, cfg: Config, dry_run: bool = False) -> Outcome:
     if not pnr:
         raise StepError("送出後找不到訂位代號")
 
-    summary = (
-        f"訂位代號 {pnr}｜{cfg.travel_date:%Y/%m/%d} {cfg.from_station}→{cfg.to_station}"
-    )
+    info, image = capture_ticket(page, pnr)
+    summary = f"{cfg.travel_date:%Y/%m/%d} {cfg.from_station}→{cfg.to_station} {info.summary()}"
     with LOG_FILE.open("a", encoding="utf-8") as log:
-        log.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} {summary}\n")
-    _screenshot(page, f"success-{pnr}")
+        log.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} {summary} {image}\n")
+    print(f"訂位明細截圖：{image}")
     notify("高鐵訂位成功", summary + "，請記得在期限內付款")
     return Outcome.SUCCESS
 
