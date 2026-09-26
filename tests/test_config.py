@@ -2,7 +2,7 @@ from datetime import date, time
 
 import pytest
 
-from auto_irs.config import ConfigError, parse_config
+from auto_irs.config import ConfigError, mask_id, parse_config, parse_identity
 
 BASE = {
     "THSR_ID": "a123456789",
@@ -47,6 +47,20 @@ def test_rejects_invalid(override):
         parse_config({**BASE, **override})
 
 
-def test_mixed_tickets():
-    cfg = parse_config({**BASE, "TICKET_ADULT": "2", "TICKET_COLLEGE": "1"})
+def test_mixed_tickets_require_passenger_ids():
+    with pytest.raises(ConfigError):
+        parse_config({**BASE, "TICKET_ADULT": "2", "TICKET_COLLEGE": "1"})
+    cfg = parse_config({**BASE, "TICKET_ADULT": "2", "TICKET_COLLEGE": "1", "PASSENGER_IDS": "b223456789"})
     assert cfg.total_tickets == 3
+    assert cfg.passenger_ids == ["B223456789"]
+
+
+def test_start_at_from_datetime_local():
+    cfg = parse_config({**BASE, "START_AT": "2026-10-01T00:00"})
+    assert cfg.start_at.hour == 0 and cfg.start_at.day == 1
+
+
+def test_identity_only_needs_ids():
+    identity = parse_identity({"THSR_ID": "A123456789", "THSR_MEMBER_ID": ""})
+    assert identity.member_id is None
+    assert mask_id(identity.id_number) == "A12*****89"

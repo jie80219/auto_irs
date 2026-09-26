@@ -1,33 +1,31 @@
 import argparse
 import sys
+import threading
+import webbrowser
 
-from .booking import run
-from .config import ConfigError, load_config
+from .config import ConfigError, load_identity, mask_id
+from .webapp import create_app
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="auto_irs", description="高鐵半自動訂票")
-    parser.add_argument("--env", default=".env", help="設定檔路徑（預設 .env）")
-    parser.add_argument("--check", action="store_true", help="只檢查設定檔，不開瀏覽器")
-    parser.add_argument("--dry-run", action="store_true", help="跑完整流程但不按「完成訂位」")
+    parser = argparse.ArgumentParser(prog="auto_irs", description="高鐵訂票介面")
+    parser.add_argument("--env", default=".env", help="身分證設定檔路徑（預設 .env）")
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--no-open", action="store_true", help="不要自動開啟瀏覽器")
     args = parser.parse_args()
 
     try:
-        cfg = load_config(args.env)
+        identity = load_identity(args.env)
     except ConfigError as exc:
-        print(f"設定錯誤：{exc}", file=sys.stderr)
+        print(f"設定錯誤：{exc}\n請先 cp .env.example .env 並填入身分證字號", file=sys.stderr)
         return 2
 
-    tickets = "、".join(f"{k}×{v}" for k, v in cfg.tickets.items() if v)
-    print(
-        f"{cfg.travel_date:%Y/%m/%d} {cfg.from_station}→{cfg.to_station} "
-        f"{cfg.depart_after:%H:%M}~{cfg.depart_before:%H:%M} "
-        f"{cfg.car_class}/{cfg.seat_pref} {tickets} "
-        f"會員：{'是' if cfg.member_id else '否'}"
-    )
-    if args.check:
-        return 0
-    return 0 if run(cfg, dry_run=args.dry_run) else 1
+    url = f"http://127.0.0.1:{args.port}"
+    print(f"取票人 {mask_id(identity.id_number)}，介面網址 {url}（Ctrl+C 結束）")
+    if not args.no_open:
+        threading.Timer(1.0, webbrowser.open, [url]).start()
+    create_app(identity).run(host="127.0.0.1", port=args.port, threaded=True)
+    return 0
 
 
 if __name__ == "__main__":

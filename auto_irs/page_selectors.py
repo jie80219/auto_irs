@@ -15,6 +15,7 @@ SEAT_PREF_LABEL = {"none": "無座位偏好", "window": "靠窗優先", "aisle":
 TICKET_AMOUNT = 'select[name="ticketPanel:rows:{row}:ticketAmount"]'
 CAPTCHA_INPUT = 'input[name="homeCaptcha:securityCode"]'
 CAPTCHA_IMAGE = "#BookingS1Form_homeCaptcha_passCode"
+CAPTCHA_REFRESH = "#BookingS1Form_homeCaptcha_reCodeLink"
 COOKIE_ACCEPT = "#cookieAccpetBtn"
 
 # ---- 第二頁：選擇車次 ----
@@ -23,11 +24,10 @@ TRAIN_SUBMIT = 'input[name="SubmitButton"]'
 
 # ---- 第三頁：取票人資料 ----
 ID_INPUT = "#idNumber"
-PHONE_INPUT = "#mobilePhone"
-EMAIL_INPUT = "#email"
 MEMBER_TGO_LABEL = "高鐵會員 TGo 帳號"
 MEMBER_NUMBER_INPUT = "#msNumber"
 MEMBER_SAME_AS_TAKER = "#memberSystemCheckBox"
+PASSENGER_ID_INPUT = 'input[name*="passengerDataIdNumber"]'
 AGREE_CHECKBOX = 'input[name="agree"]'
 CONFIRM_SUBMIT = "#isSubmit"
 

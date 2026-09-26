@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>高鐵訂票</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --text: #1d1f23; --muted: #6b7280; --line: #e3e5e9;
+    --accent: #ca4f0f; --accent-soft: #fdf1ea; --ok: #1f7a4d; --ok-soft: #e8f5ee;
+    --err: #b42318; --err-soft: #fdecea; --field: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171a; --card: #1e2125; --text: #e8eaed; --muted: #9aa0a8; --line: #30343a;
+      --accent: #f07a3c; --accent-soft: #2e2019; --ok: #5cc98f; --ok-soft: #17291f;
+      --err: #f28b82; --err-soft: #2e1b1a; --field: #16181b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px;
+         display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  h1 { grid-column: 1 / -1; margin: 0; font-size: 22px; }
+  h1 small { font-size: 13px; font-weight: normal; color: var(--muted); margin-left: 8px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card h2 { margin: 0 0 14px; font-size: 16px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .row.one { grid-template-columns: 1fr; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  input, select, button { font: inherit; color: var(--text); }
+  input[type=text], input[type=date], input[type=time], input[type=number],
+  input[type=datetime-local], select {
+    background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%;
+  }
+  fieldset { border: 0; padding: 0; margin: 0 0 14px; }
+  legend { font-size: 13px; color: var(--muted); margin-bottom: 6px; padding: 0; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg label { position: relative; }
+  .seg input { position: absolute; opacity: 0; }
+  .seg span { display: inline-block; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; }
+  .seg input:checked + span { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tickets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  @media (max-width: 420px) { .tickets { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .check { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+  details { margin: 6px 0 16px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  details .row { margin-top: 10px; }
+  .id { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .id b { color: var(--text); font-weight: 600; }
+  .btn { border: 0; border-radius: 8px; padding: 10px 18px; cursor: pointer; background: var(--accent); color: #fff; font-weight: 600; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: normal; }
+  .actions { display: flex; gap: 8px; }
+  .msg { font-size: 13px; margin-top: 10px; min-height: 1.5em; color: var(--err); }
+  .badge { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: 999px; background: var(--line); margin-left: 8px; vertical-align: 2px; }
+  .badge.captcha { background: var(--accent-soft); color: var(--accent); }
+  .badge.done { background: var(--ok-soft); color: var(--ok); }
+  .badge.failed { background: var(--err-soft); color: var(--err); }
+  #captchaBox { display: none; border: 2px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  #captchaBox img { display: block; height: 60px; background: #fff; border-radius: 6px; margin-bottom: 10px; }
+  #captchaBox form { display: flex; gap: 8px; }
+  #captchaBox input { font-size: 20px; letter-spacing: 4px; text-transform: uppercase; max-width: 160px; }
+  #result { display: none; background: var(--ok-soft); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  #result p { margin: 0 0 10px; font-weight: 600; color: var(--ok); }
+  #result img { max-width: 100%; border-radius: 6px; border: 1px solid var(--line); }
+  #error { display: none; background: var(--err-soft); color: var(--err); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+  #logs { font: 12px/1.6 ui-monospace, Menlo, monospace; background: var(--bg); border-radius: 8px; padding: 10px;
+          height: 260px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>高鐵訂票<small>驗證碼由你輸入，其餘流程自動完成</small></h1>
+
+  <section class="card">
+    <h2>行程</h2>
+    <div class="id" id="identity"></div>
+    <form id="tripForm" autocomplete="off">
+      <div class="row">
+        <label class="f">起站<select name="FROM_STATION" required></select></label>
+        <label class="f">迄站<select name="TO_STATION" required></select></label>
+      </div>
+      <div class="row one">
+        <label class="f">乘車日期<input type="date" name="TRAVEL_DATE" required></label>
+      </div>
+      <div class="row">
+        <label class="f">最早出發<input type="time" name="DEPART_AFTER" value="06:00" required></label>
+        <label class="f">最晚出發<input type="time" name="DEPART_BEFORE" value="23:59" required></label>
+      </div>
+      <fieldset>
+        <legend>車廂</legend>
+        <div class="seg">
+          <label><input type="radio" name="CAR_CLASS" value="standard" checked><span>標準車廂</span></label>
+          <label><input type="radio" name="CAR_CLASS" value="business"><span>商務車廂</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>座位偏好</legend>
+        <div class="seg">
+          <label><input type="radio" name="SEAT_PREF" value="none" checked><span>無偏好</span></label>
+          <label><input type="radio" name="SEAT_PREF" value="window"><span>靠窗</span></label>
+          <label><input type="radio" name="SEAT_PREF" value="aisle"><span>走道</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>票數（合計 1–10 張）</legend>
+        <div class="tickets" id="tickets"></div>
+      </fieldset>
+      <div id="passengerIds"></div>
+      <div id="memberRow"></div>
+      <details>
+        <summary>進階設定</summary>
+        <div class="row one">
+          <label class="f">開賣時間（留空則立即開始）<input type="datetime-local" name="START_AT"></label>
+        </div>
+        <div class="row">
+          <label class="f">最多重試輪數<input type="number" name="MAX_ATTEMPTS" value="10" min="1"></label>
+          <label class="f">重試間隔（秒，最少 10）<input type="number" name="RETRY_INTERVAL_SEC" value="15" min="10"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="showBrowser"> 顯示高鐵瀏覽器視窗</label>
+        <label class="check"><input type="checkbox" id="dryRun"> 測試模式（跑到最後一步但不送出訂位）</label>
+      </details>
+      <div class="actions">
+        <button class="btn" id="startBtn" type="submit">開始訂票</button>
+        <button class="btn ghost" id="stopBtn" type="button" disabled>停止</button>
+      </div>
+      <div class="msg" id="formMsg" role="alert"></div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>進度<span class="badge" id="phase">待命</span></h2>
+    <div id="captchaBox">
+      <img id="captchaImg" alt="高鐵驗證碼">
+      <form id="captchaForm">
+        <input type="text" id="captchaInput" maxlength="8" placeholder="驗證碼" aria-label="驗證碼">
+        <button class="btn" type="submit">送出</button>
+        <button class="btn ghost" type="button" id="refreshBtn">換一張</button>
+      </form>
+    </div>
+    <div id="result"><p id="resultText"></p><img id="ticketImg" alt="訂位明細"></div>
+    <div id="error"></div>
+    <div id="logs"></div>
+    <p class="note">訂位完成後請在付款期限內付款；明細截圖存在專案的 tickets/ 資料夾。</p>
+  </section>
+</main>
+
+<script>
+const TICKETS = [["ADULT", "全票", 1], ["CHILD", "孩童", 0], ["DISABLED", "愛心", 0], ["ELDER", "敬老", 0], ["COLLEGE", "大學生", 0]];
+const ID_TICKETS = ["DISABLED", "ELDER", "COLLEGE"];
+const PHASES = { idle: "待命", running: "執行中", captcha: "請輸入驗證碼", done: "完成", failed: "失敗", stopped: "已停止" };
+const $ = (id) => document.getElementById(id);
+const form = $("tripForm");
+let lastCaptchaSeq = null, polling = null, baseTitle = document.title;
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function renderPassengerIds() {
+  const need = ID_TICKETS.reduce((n, k) => n + Number(form[`TICKET_${k}`].value), 0);
+  const box = $("passengerIds");
+  const old = [...box.querySelectorAll("input")].map((i) => i.value);
+  box.innerHTML = "";
+  if (!need) return;
+  const row = document.createElement("div");
+  row.className = "row";
+  for (let i = 0; i < need; i++) {
+    const label = document.createElement("label");
+    label.className = "f";
+    label.textContent = `優待票乘客 ${i + 1} 身分證`;
+    const input = document.createElement("input");
+    input.type = "text"; input.required = true; input.maxLength = 10; input.value = old[i] || "";
+    input.pattern = "[A-Za-z][0-9A-Da-d][0-9]{8}";
+    label.appendChild(input); row.appendChild(label);
+  }
+  box.appendChild(row);
+}
+
+async function setup() {
+  const s = await api("/api/setup");
+  $("identity").innerHTML = `取票人 <b>${s.idMasked}</b>（來自 .env）`;
+  for (const name of ["FROM_STATION", "TO_STATION"]) {
+    form[name].innerHTML = s.stations.map((st) => `<option>${st}</option>`).join("");
+  }
+  form.FROM_STATION.value = "台北"; form.TO_STATION.value = "左營";
+
+  $("tickets").innerHTML = TICKETS.map(([k, label, def]) =>
+    `<label class="f">${label}<select name="TICKET_${k}">${
+      [...Array(11).keys()].map((n) => `<option ${n === def ? "selected" : ""}>${n}</option>`).join("")
+    }</select></label>`).join("");
+  $("tickets").addEventListener("change", renderPassengerIds);
+
+  if (s.memberMasked) {
+    $("memberRow").innerHTML = `<label class="check"><input type="checkbox" id="useMember" checked>
+      使用 TGo 會員累積點數（${s.memberMasked}）</label>`;
+  }
+
+  const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  const tomorrow = new Date(today.getTime() + 86400000);
+  form.TRAVEL_DATE.min = today.toISOString().slice(0, 10);
+  form.TRAVEL_DATE.value = tomorrow.toISOString().slice(0, 10);
+
+  for (const [k, v] of Object.entries(s.lastTrip || {})) {
+    const el = form.elements[k];
+    if (!el) continue;
+    if (el instanceof RadioNodeList) { for (const r of el) r.checked = r.value === v; }
+    else if (!(k === "TRAVEL_DATE" && v < form.TRAVEL_DATE.min)) el.value = v;
+  }
+  renderPassengerIds();
+  poll();
+}
+
+function collectTrip() {
+  const data = new FormData(form);
+  const trip = {};
+  for (const [k, v] of data.entries()) trip[k] = v;
+  trip.PASSENGER_IDS = [...$("passengerIds").querySelectorAll("input")].map((i) => i.value.trim().toUpperCase()).join(",");
+  return trip;
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("formMsg").textContent = "";
+  try {
+    await api("/api/start", {
+      trip: collectTrip(),
+      useMember: $("useMember")?.checked ?? false,
+      dryRun: $("dryRun").checked,
+      showBrowser: $("showBrowser").checked,
+    });
+    lastCaptchaSeq = null;
+    poll();
+  } catch (err) { $("formMsg").textContent = err.message; }
+});
+
+$("stopBtn").addEventListener("click", () => api("/api/stop", {}).catch(() => {}));
+
+$("captchaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const code = $("captchaInput").value.trim();
+  if (!code) return;
+  $("captchaBox").style.display = "none";
+  await api("/api/captcha", { code }).catch((err) => alertLog(err.message));
+});
+$("refreshBtn").addEventListener("click", () => {
+  $("captchaBox").style.display = "none";
+  api("/api/captcha/refresh", {}).catch(() => {});
+});
+
+function alertLog(text) { $("logs").textContent += `\n${text}`; }
+
+function render(s) {
+  const phase = s.phase || "idle";
+  const active = phase === "running" || phase === "captcha";
+  $("phase").textContent = PHASES[phase] || phase;
+  $("phase").className = `badge ${phase}`;
+  $("startBtn").disabled = active;
+  $("stopBtn").disabled = !active;
+  for (const el of form.querySelectorAll("input, select")) el.disabled = active;
+
+  const logs = $("logs");
+  const atBottom = logs.scrollTop + logs.clientHeight >= logs.scrollHeight - 8;
+  logs.textContent = (s.logs || []).join("\n");
+  if (atBottom) logs.scrollTop = logs.scrollHeight;
+
+  if (s.captchaSeq && s.captchaSeq !== lastCaptchaSeq) {
+    lastCaptchaSeq = s.captchaSeq;
+    $("captchaImg").src = `/api/captcha.png?seq=${s.captchaSeq}`;
+    $("captchaInput").value = "";
+    $("captchaBox").style.display = "block";
+    $("captchaInput").focus();
+  } else if (!s.captchaSeq) {
+    $("captchaBox").style.display = "none";
+  }
+  document.title = phase === "captcha" ? "【請輸入驗證碼】" + baseTitle : baseTitle;
+
+  $("result").style.display = s.result ? "block" : "none";
+  if (s.result) {
+    $("resultText").textContent = s.result.summary;
+    if (s.result.hasImage && !$("ticketImg").src) $("ticketImg").src = `/api/ticket.png?t=${Date.now()}`;
+  } else {
+    $("ticketImg").removeAttribute("src");
+  }
+  $("error").style.display = s.error ? "block" : "none";
+  $("error").textContent = s.error || "";
+  return active;
+}
+
+async function poll() {
+  clearTimeout(polling);
+  try {
+    const active = render(await api("/api/status"));
+    if (active) polling = setTimeout(poll, 600);
+  } catch { polling = setTimeout(poll, 2000); }
+}
+
+setup().catch((err) => { $("formMsg").textContent = `無法載入設定：${err.message}`; });
+</script>
+</body>
+</html>
