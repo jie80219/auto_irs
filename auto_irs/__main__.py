@@ -9,6 +9,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="auto_irs", description="高鐵半自動訂票")
     parser.add_argument("--env", default=".env", help="設定檔路徑（預設 .env）")
     parser.add_argument("--check", action="store_true", help="只檢查設定檔，不開瀏覽器")
+    parser.add_argument("--dry-run", action="store_true", help="跑完整流程但不按「完成訂位」")
     args = parser.parse_args()
 
     try:
@@ -26,7 +27,7 @@ def main() -> int:
     )
     if args.check:
         return 0
-    return 0 if run(cfg) else 1
+    return 0 if run(cfg, dry_run=args.dry_run) else 1
 
 
 if __name__ == "__main__":

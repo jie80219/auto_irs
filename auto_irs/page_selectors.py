@@ -25,7 +25,7 @@ TRAIN_SUBMIT = 'input[name="SubmitButton"]'
 ID_INPUT = "#idNumber"
 PHONE_INPUT = "#mobilePhone"
 EMAIL_INPUT = "#email"
-MEMBER_TGO_LABEL = "TGo"
+MEMBER_TGO_LABEL = "高鐵會員 TGo 帳號"
 MEMBER_NUMBER_INPUT = "#msNumber"
 MEMBER_SAME_AS_TAKER = "#memberSystemCheckBox"
 AGREE_CHECKBOX = 'input[name="agree"]'

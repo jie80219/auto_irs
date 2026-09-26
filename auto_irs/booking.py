@@ -209,7 +209,7 @@ def confirm_booking(page: Page, cfg: Config) -> str | None:
 
 # ---------- 整體流程 ----------
 
-def attempt(page: Page, cfg: Config) -> Outcome:
+def attempt(page: Page, cfg: Config, dry_run: bool = False) -> Outcome:
     fill_search_form(page, cfg)
     result = wait_for_captcha(page, cfg)
     if result is not Outcome.SUCCESS:
@@ -219,6 +219,10 @@ def attempt(page: Page, cfg: Config) -> Outcome:
         return Outcome.RETRY
 
     fill_passenger(page, cfg)
+    if dry_run:
+        _screenshot(page, "dry-run")
+        notify("高鐵訂票（測試）", "已填好取票人資料，測試模式不會送出訂位")
+        return Outcome.SUCCESS
     pnr = confirm_booking(page, cfg)
     if not pnr:
         raise StepError("送出後找不到訂位代號")
@@ -240,7 +244,7 @@ def wait_until(start_at: datetime) -> None:
     print()
 
 
-def run(cfg: Config) -> bool:
+def run(cfg: Config, dry_run: bool = False) -> bool:
     if cfg.start_at:
         wait_until(cfg.start_at)
 
@@ -252,7 +256,7 @@ def run(cfg: Config) -> bool:
             for n in range(1, cfg.max_attempts + 1):
                 print(f"=== 第 {n}/{cfg.max_attempts} 輪 ===")
                 try:
-                    outcome = attempt(page, cfg)
+                    outcome = attempt(page, cfg, dry_run)
                 except StepError as exc:
                     _screenshot(page, "step-error")
                     notify("高鐵訂票需要手動處理", str(exc))
@@ -271,6 +275,9 @@ def run(cfg: Config) -> bool:
             else:
                 notify("高鐵訂票", f"已嘗試 {cfg.max_attempts} 輪，未訂到符合條件的車票")
         finally:
-            input("瀏覽器保持開啟，可手動檢查或接手。按 Enter 關閉…")
+            try:
+                input("瀏覽器保持開啟，可手動檢查或接手。按 Enter 關閉…")
+            except EOFError:
+                page.wait_for_timeout(180_000)
             browser.close()
         return success
